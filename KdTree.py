@@ -3,6 +3,7 @@
 from tkinter import Tk, Canvas, Button, PhotoImage, TOP, RIGHT
 from math import sqrt
 import pickle
+import time
 
 line_width = 2
 point_rad = 4
@@ -88,71 +89,65 @@ def FindVoisin(kdnode, voisin, point): #voisin = kdnode.point
         return voisin
               
     else:
-        print("boucle")
         (x0,y0) = point
         
-        [x,y] = voisin
         voisin2 = voisin
-        rayon = sqrt((x-x0)**2 + (y-y0)**2)
+        rayon = distance(point, voisin)
         
         [x_now,y_now] = kdnode.point
-        rayon_now = sqrt((x_now-x0)**2 + (y_now-y0)**2)
+        rayon_now = distance(point, kdnode.point)
         if rayon_now < rayon:
             voisin = [x_now,y_now]
             rayon = rayon_now
-            print("new rayon = ", voisin)
-        print(voisin)
+        
+        [x,y] = voisin
         [x_min, x_max, y_min, y_max] = [x0-rayon, x0+rayon, y0-rayon, y0+rayon]
         
         if kdnode.dim == 0:
             if x0 <= x :
                 voisin1 = FindVoisin(kdnode.left_child, voisin, point)
-                (x1,y1) = voisin1
-                rayon1 = sqrt((x1-x0)**2 + (y1-y0)**2)
+                rayon1 = distance(voisin1, point)
                 if x0+rayon1 > x :
-                    print("on regarde ailleurs")
                     voisin2 = FindVoisin(kdnode.right_child, voisin, point)
             
             elif x0 > x :
                 voisin1 = FindVoisin(kdnode.right_child, voisin, point)
-                (x1,y1) = voisin1
-                rayon1 = sqrt((x1-x0)**2 + (y1-y0)**2)
+                rayon1 = distance(voisin1, point)
                 if x0-rayon1 < x :
-                    print("on regarde ailleurs")
                     voisin2 = FindVoisin(kdnode.left_child, voisin, point)
                 
         elif kdnode.dim == 1:
             if y0 <= y :
                 voisin1 = FindVoisin(kdnode.left_child, voisin, point)
-                (x1,y1) = voisin1
-                rayon1 = sqrt((x1-x0)**2 + (y1-y0)**2)
+                rayon1 = distance(voisin1, point)
                 if y0+rayon1 > y :
-                    print("on regarde ailleurs")
                     voisin2 = FindVoisin(kdnode.right_child, voisin, point)
                 
             elif y0 > y :
                 voisin1 = FindVoisin(kdnode.right_child, voisin, point)
-                (x1,y1) = voisin1
-                rayon1 = sqrt((x1-x0)**2 + (y1-y0)**2)
+                rayon1 = distance(voisin1, point)
                 if y0-rayon1 < y :
-                    print("on regarde ailleurs")
                     voisin2 = FindVoisin(kdnode.left_child, voisin, point)
         
-        (x2,y2) = voisin2
-        (x1,y1) = voisin1
-        rayon1 = sqrt((x1-x0)**2 + (y1-y0)**2)
-        rayon2 = sqrt((x2-x0)**2 + (y2-y0)**2)
+        rayon2 = distance(voisin2, point)
         
-        if rayon2 > rayon1:
+        if rayon2 < rayon1:
             voisin1 = voisin2
             rayon1 = rayon2
         
-        if rayon1 > rayon:
+        if rayon1 < rayon:
             voisin = voisin1
             rayon = rayon1
         
         return voisin
         
+
+def distance(pt1,pt2):
+    [x1,y1] = pt1
+    [x2,y2] = pt2
+    return sqrt((x1-x2)**2 + (y1-y2)**2)
+    
+
 
 def drawVoisin(can, point, voisin):
     [x0,y0] = point
@@ -161,6 +156,54 @@ def drawVoisin(can, point, voisin):
     can.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, fill='blue')
     can.create_oval(x0 - 5, y0 - 5, x0 + 5, y0 + 5, outline='green', fill='green')
     can.create_line(x0, y0, x, y, fill='green')
+
+def Pick(event):
+    can.delete("all")
+    x = event.x
+    y = event.y
+    point = (x,y)
+    
+    start1 = time.perf_counter()
+    voisin = FindVoisin(kdtree, kdtree.point, point)
+    stop1 = time.perf_counter()
+    
+    start2 = time.perf_counter()
+    voisin2 = RechercheNaive(list_points, point)
+    stop2 = time.perf_counter()
+    
+    print('Avec la recherche naïve, on trouve', voisin2, 'en', stop2-start2, 'secondes.' )
+    print('Avec la recherche par KdTree, on trouve', voisin, 'en', stop1-start1, 'secondes.' )
+    
+    drawVoisin(can, point, voisin)
+    drawKdTree(can, size, kdtree, colors)
+    
+
+'''Exercice 4'''
+
+def RechercheNaive(liste, point):
+    d = distance(point,liste[0])
+    voisin = liste[0]
+    for pt in liste:
+        new_distance = distance(point,pt)
+        if new_distance < d:
+            d = new_distance
+            voisin = pt
+    return voisin
+
+#Dans tous les cas, ma recherche naÏve est plus rapide que ma recherche par KdTree, et apparemment plus juste pour l'arbre à 10000 points, ou le KdTree ne trouve pas le plus proche, contrairement à l'autre.  
+
+
+'''Exercice 5'''  
+
+def CreerKdTree(Liste, dim=0):
+    l = sorted(Liste, key=lambda x: x[dim])
+    n = len(l)
+    KdTree = KdNode(l[n//2], dim)
+    fils_gauche = l[0:n//2]
+    fils_droit = l[(n//2)+1:n]
+    Kdtree.left_child = CreerKdTree(fils_gauche, (dim+1)%2)
+    Kdtree.right_child = CreerKdTree(fils_droit, (dim+1)%2)
+    return KdTree
 
 
 
@@ -184,9 +227,12 @@ if __name__ == '__main__':
 #    drawPoints(can, list_points, colors)
     size = [0, size_x, 0, size_y]
     drawKdTree(can, size, kdtree, colors)
-
+    
+    can.bind("<Button-1>", Pick)
+    
     fen.mainloop()
-
+    
+    '''
     print(Findpoints(kdtree, (350, 350)))
     print(Findpoints(kdtree, (500, 150)))
     print(Findpoints(kdtree, (475, 225)))
@@ -196,15 +242,4 @@ if __name__ == '__main__':
     print(Findpoints(kdtree, (400, 500)))
     print(Findpoints(kdtree, (950, 450)))
     print(Findpoints(kdtree, (700, 500)))
-    
-    fen = Tk()
-    can = Canvas(fen, width=size_x, height=size_y, bg='white')
-    can.pack(side=TOP, padx=5, pady=5)
-    
-    point = (500,100)
-    voisin = FindVoisin(kdtree, kdtree.point, point)
-    drawVoisin(can, point, voisin)
-    drawKdTree(can, size, kdtree, colors)
-    fen.mainloop()
-    
-
+    '''
